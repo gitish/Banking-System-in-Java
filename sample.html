@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trivy Security Vulnerability Report</title>
+
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: #0f1b2d;
+      --panel-2: #132238;
+      --border: #25364d;
+      --text: #e8eef7;
+      --muted: #9fb0c7;
+      --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, 0.14);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.14);
+      --yellow: #f59e0b;
+      --yellow-bg: rgba(245, 158, 11, 0.14);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59, 130, 246, 0.14);
+      --purple: #a855f7;
+      --purple-bg: rgba(168, 85, 247, 0.14);
+      --critical: #991b1b;
+      --high: #dc2626;
+      --medium: #f59e0b;
+      --low: #10b981;
+      --unknown: #64748b;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 35%),
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 80px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .title-block p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 780px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--yellow);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.8);
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(19, 34, 56, 0.96), rgba(15, 27, 45, 0.96));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .file-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 260px;
+    }
+
+    .file-box label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    select {
+      background: #081426;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input[type="file"] {
+      font-size: 13px;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      color: white;
+      cursor: pointer;
+      font-weight: 700;
+      transition: 0.18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+    }
+
+    .btn-muted {
+      background: #1f2f46;
+      border: 1px solid var(--border);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 14px;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      min-height: 102px;
+    }
+
+    .card-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card-value {
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 900;
+      margin-top: 14px;
+    }
+
+    .card-note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .card.critical .card-value { color: #fecaca; }
+    .card.high .card-value { color: #fca5a5; }
+    .card.medium .card-value { color: #fcd34d; }
+    .card.low .card-value { color: #86efac; }
+    .card.resolved .card-value { color: #4ade80; }
+    .card.open .card-value { color: #f87171; }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      background: #111f33;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .chip input {
+      accent-color: var(--blue);
+    }
+
+    .content {
+      padding: 18px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .section-title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #0b1728;
+      color: var(--muted);
+      text-align: left;
+      padding: 13px 14px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody td {
+      padding: 14px;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(37, 54, 77, 0.8);
+      font-size: 13px;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    tbody tr.resolved-row {
+      background: rgba(34, 197, 94, 0.08);
+    }
+
+    tbody tr.resolved-row:hover {
+      background: rgba(34, 197, 94, 0.12);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .badge-critical {
+      color: #fee2e2;
+      background: rgba(153, 27, 27, 0.5);
+      border: 1px solid rgba(252, 165, 165, 0.28);
+    }
+
+    .badge-high {
+      color: #fee2e2;
+      background: rgba(220, 38, 38, 0.38);
+      border: 1px solid rgba(252, 165, 165, 0.25);
+    }
+
+    .badge-medium {
+      color: #fffbeb;
+      background: rgba(245, 158, 11, 0.32);
+      border: 1px solid rgba(253, 230, 138, 0.24);
+    }
+
+    .badge-low {
+      color: #dcfce7;
+      background: rgba(16, 185, 129, 0.28);
+      border: 1px solid rgba(134, 239, 172, 0.22);
+    }
+
+    .badge-unknown {
+      color: #e2e8f0;
+      background: rgba(100, 116, 139, 0.32);
+      border: 1px solid rgba(203, 213, 225, 0.2);
+    }
+
+    .status-open {
+      color: #fecaca;
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(248, 113, 113, 0.22);
+    }
+
+    .status-fixed {
+      color: #bbf7d0;
+      background: rgba(34, 197, 94, 0.16);
+      border: 1px solid rgba(74, 222, 128, 0.22);
+    }
+
+    .status-new {
+      color: #bfdbfe;
+      background: rgba(59, 130, 246, 0.16);
+      border: 1px solid rgba(96, 165, 250, 0.22);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .vuln-id a {
+      color: #93c5fd;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .vuln-id a:hover {
+      text-decoration: underline;
+    }
+
+    .pkg {
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .description {
+      color: #cbd5e1;
+      max-width: 460px;
+    }
+
+    .fix-text {
+      color: #bbf7d0;
+      font-weight: 700;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 52px 20px;
+      color: var(--muted);
+    }
+
+    .empty strong {
+      display: block;
+      color: var(--text);
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      margin-top: 22px;
+    }
+
+    .report-meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    .meta-item {
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    .meta-value {
+      margin-top: 6px;
+      color: var(--text);
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    @media (max-width: 1100px) {
+      .summary {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .report-meta {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .header {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .report-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      .file-box {
+        min-width: 100%;
+      }
+
+      .button-row {
+        margin-left: 0;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: #111827;
+      }
+
+      .toolbar,
+      .filters,
+      .button-row {
+        display: none !important;
+      }
+
+      .panel {
+        box-shadow: none;
+      }
+
+      .container {
+        width: 100%;
+        padding: 0;
+      }
+
+      table {
+        min-width: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="title-block">
+        <h1>Trivy Security Vulnerability Report</h1>
+        <p>
+          Upload your Trivy JSON scan before and after remediation. The report highlights open vulnerabilities,
+          fixed vulnerabilities, severity distribution, package details, and recommended fixed versions.
+        </p>
+      </div>
+
+      <div class="status-pill" id="overallStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Awaiting scan data</span>
+      </div>
+    </header>
+
+    <main class="panel">
+      <section class="toolbar">
+        <div class="file-box">
+          <label for="beforeFile">Before Fix Trivy JSON</label>
+          <input type="file" id="beforeFile" accept=".json,application/json" />
+        </div>
+
+        <div class="file-box">
+          <label for="afterFile">After Fix Trivy JSON Optional</label>
+          <input type="file" id="afterFile" accept=".json,application/json" />
+        </div>
+
+        <div class="button-row">
+          <button class="btn-primary" onclick="loadDemoData()">Load Demo Data</button>
+          <button class="btn-success" onclick="downloadReport()">Download Report</button>
+          <button class="btn-muted" onclick="window.print()">Print / Save PDF</button>
+          <button class="btn-muted" onclick="resetReport()">Reset</button>
+        </div>
+      </section>
+
+      <section class="report-meta">
+        <div class="meta-item">
+          <div class="meta-label">Project / Target</div>
+          <div class="meta-value" id="projectTarget">Not loaded</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Report Generated</div>
+          <div class="meta-value" id="generatedAt">-</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-value" id="scannerVersion">Trivy JSON</div>
+        </div>
+
+        <div class="meta-item">
+          <div class="meta-label">Remediation Status</div>
+          <div class="meta-value" id="remediationStatus">Not evaluated</div>
+        </div>
+      </section>
+
+      <section class="summary">
+        <div class="card open">
+          <div class="card-label">Open</div>
+          <div class="card-value" id="openCount">0</div>
+          <div class="card-note">Still present after fix</div>
+        </div>
+
+        <div class="card resolved">
+          <div class="card-label">Fixed</div>
+          <div class="card-value" id="fixedCount">0</div>
+          <div class="card-note">Resolved after remediation</div>
+        </div>
+
+        <div class="card critical">
+          <div class="card-label">Critical</div>
+          <div class="card-value" id="criticalCount">0</div>
+          <div class="card-note">Highest risk</div>
+        </div>
+
+        <div class="card high">
+          <div class="card-label">High</div>
+          <div class="card-value" id="highCount">0</div>
+          <div class="card-note">Urgent remediation</div>
+        </div>
+
+        <div class="card medium">
+          <div class="card-label">Medium</div>
+          <div class="card-value" id="mediumCount">0</div>
+          <div class="card-note">Planned remediation</div>
+        </div>
+
+        <div class="card low">
+          <div class="card-label">Low / Unknown</div>
+          <div class="card-value" id="lowCount">0</div>
+          <div class="card-note">Lower priority</div>
+        </div>
+      </section>
+
+      <section class="filters">
+        <div class="search">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search by CVE, package, installed version, fixed version, title, or target..."
+            oninput="renderTable()"
+          />
+        </div>
+
+        <div class="filter-group">
+          <label class="chip">
+            <input type="checkbox" value="CRITICAL" checked onchange="renderTable()" />
+            Critical
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" value="HIGH" checked onchange="renderTable()" />
+            High
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" value="MEDIUM" checked onchange="renderTable()" />
+            Medium
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" value="LOW" checked onchange="renderTable()" />
+            Low
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" value="UNKNOWN" checked onchange="renderTable()" />
+            Unknown
+          </label>
+        </div>
+
+        <select id="statusFilter" onchange="renderTable()">
+          <option value="ALL">All Statuses</option>
+          <option value="OPEN">Open Only</option>
+          <option value="FIXED">Fixed Only</option>
+          <option value="NEW">New After Fix</option>
+        </select>
+      </section>
+
+      <section class="content">
+        <div class="section-title">
+          <h2>Vulnerability Details</h2>
+          <span id="tableCount">0 vulnerabilities shown</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Severity</th>
+                <th>Vulnerability</th>
+                <th>Package</th>
+                <th>Installed</th>
+                <th>Fixed Version</th>
+                <th>Target</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="vulnerabilityTable">
+              <tr>
+                <td colspan="8">
+                  <div class="empty">
+                    <strong>No scan data loaded</strong>
+                    Upload Trivy JSON files or click “Load Demo Data”.
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div class="footer">
+      Self-contained Trivy report. Generated locally in your browser. No data is uploaded anywhere.
+    </div>
+  </div>
+
+  <script>
+    let beforeScan = null;
+    let afterScan = null;
+    let reportRows = [];
+
+    const severityOrder = {
+      CRITICAL: 5,
+      HIGH: 4,
+      MEDIUM: 3,
+      LOW: 2,
+      UNKNOWN: 1
+    };
+
+    document.getElementById("beforeFile").addEventListener("change", async function (event) {
+      beforeScan = await readJsonFile(event.target.files[0]);
+      buildReport();
+    });
+
+    document.getElementById("afterFile").addEventListener("change", async function (event) {
+      afterScan = await readJsonFile(event.target.files[0]);
+      buildReport();
+    });
+
+    function readJsonFile(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) {
+          resolve(null);
+          return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          try {
+            resolve(JSON.parse(reader.result));
+          } catch (error) {
+            alert("Invalid JSON file: " + file.name);
+            reject(error);
+          }
+        };
+
+        reader.onerror = () => {
+          alert("Unable to read file: " + file.name);
+          reject(reader.error);
+        };
+
+        reader.readAsText(file);
+      });
+    }
+
+    function flattenTrivyResults(scan, source) {
+      if (!scan || !Array.isArray(scan.Results)) {
+        return [];
+      }
+
+      const rows = [];
+
+      scan.Results.forEach(result => {
+        const target = result.Target || "Unknown target";
+        const resultType = result.Type || "Unknown type";
+        const vulnerabilities = Array.isArray(result.Vulnerabilities)
+          ? result.Vulnerabilities
+          : [];
+
+        vulnerabilities.forEach(v => {
+          const severity = normalizeSeverity(v.Severity);
+
+          rows.push({
+            source,
+            target,
+            resultType,
+            vulnerabilityId: v.VulnerabilityID || "UNKNOWN",
+            packageName: v.PkgName || "Unknown package",
+            installedVersion: v.InstalledVersion || "-",
+            fixedVersion: v.FixedVersion || "-",
+            severity,
+            title: v.Title || "",
+            description: v.Description || "",
+            primaryURL: v.PrimaryURL || "",
+            references: Array.isArray(v.References) ? v.References : [],
+            publishedDate: v.PublishedDate || "",
+            lastModifiedDate: v.LastModifiedDate || ""
+          });
+        });
+      });
+
+      return rows;
+    }
+
+    function normalizeSeverity(value) {
+      const severity = String(value || "UNKNOWN").toUpperCase();
+      if (["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"].includes(severity)) {
+        return severity;
+      }
+      return "UNKNOWN";
+    }
+
+    function getVulnerabilityKey(row) {
+      return [
+        row.target,
+        row.packageName,
+        row.vulnerabilityId
+      ].join("::").toLowerCase();
+    }
+
+    function buildReport() {
+      const beforeRows = flattenTrivyResults(beforeScan, "before");
+      const afterRows = flattenTrivyResults(afterScan, "after");
+
+      const afterKeys = new Set(afterRows.map(getVulnerabilityKey));
+      const beforeKeys = new Set(beforeRows.map(getVulnerabilityKey));
+
+      const comparedBeforeRows = beforeRows.map(row => {
+        const isStillPresent = afterScan ? afterKeys.has(getVulnerabilityKey(row)) : true;
+
+        return {
+          ...row,
+          status: isStillPresent ? "OPEN" : "FIXED"
+        };
+      });
+
+      const newAfterRows = afterScan
+        ? afterRows
+            .filter(row => !beforeKeys.has(getVulnerabilityKey(row)))
+            .map(row => ({
+              ...row,
+              status: "NEW"
+            }))
+        : [];
+
+      reportRows = [...comparedBeforeRows, ...newAfterRows];
+
+      reportRows.sort((a, b) => {
+        const statusScore = { OPEN: 3, NEW: 2, FIXED: 1 };
+        const statusDiff = statusScore[b.status] - statusScore[a.status];
+        if (statusDiff !== 0) return statusDiff;
+
+        return severityOrder[b.severity] - severityOrder[a.severity];
+      });
+
+      updateMeta();
+      updateSummary();
+      renderTable();
+    }
+
+    function updateMeta() {
+      const generatedAt = new Date().toLocaleString();
+
+      const target =
+        beforeScan?.ArtifactName ||
+        beforeScan?.Metadata?.ImageID ||
+        beforeScan?.Results?.[0]?.Target ||
+        afterScan?.ArtifactName ||
+        afterScan?.Results?.[0]?.Target ||
+        "Not loaded";
+
+      const trivyVersion =
+        beforeScan?.SchemaVersion ||
+        afterScan?.SchemaVersion ||
+        "Trivy JSON";
+
+      document.getElementById("projectTarget").textContent = target;
+      document.getElementById("generatedAt").textContent = generatedAt;
+      document.getElementById("scannerVersion").textContent = trivyVersion;
+
+      const openCount = reportRows.filter(r => r.status === "OPEN").length;
+      const fixedCount = reportRows.filter(r => r.status === "FIXED").length;
+
+      let remediationText = "Not evaluated";
+      if (beforeScan && !afterScan) {
+        remediationText = "Before scan loaded";
+      } else if (beforeScan && afterScan && openCount === 0) {
+        remediationText = "All detected vulnerabilities fixed";
+      } else if (beforeScan && afterScan) {
+        remediationText = `${fixedCount} fixed, ${openCount} still open`;
+      }
+
+      document.getElementById("remediationStatus").textContent = remediationText;
+
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+
+      if (!beforeScan && !afterScan) {
+        statusText.textContent = "Awaiting scan data";
+        statusDot.style.background = "var(--yellow)";
+        statusDot.style.boxShadow = "0 0 20px rgba(245, 158, 11, 0.8)";
+      } else if (beforeScan && afterScan && openCount === 0) {
+        statusText.textContent = "Green result: no open vulnerabilities";
+        statusDot.style.background = "var(--green)";
+        statusDot.style.boxShadow = "0 0 20px rgba(34, 197, 94, 0.8)";
+      } else if (openCount > 0) {
+        statusText.textContent = `${openCount} vulnerability issue(s) still open`;
+        statusDot.style.background = "var(--red)";
+        statusDot.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.8)";
+      } else {
+        statusText.textContent = "Scan loaded";
+        statusDot.style.background = "var(--blue)";
+        statusDot.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.8)";
+      }
+    }
+
+    function updateSummary() {
+      const openCount = reportRows.filter(r => r.status === "OPEN").length;
+      const fixedCount = reportRows.filter(r => r.status === "FIXED").length;
+
+      const activeRows = reportRows.filter(r => r.status !== "FIXED");
+
+      const criticalCount = activeRows.filter(r => r.severity === "CRITICAL").length;
+      const highCount = activeRows.filter(r => r.severity === "HIGH").length;
+      const mediumCount = activeRows.filter(r => r.severity === "MEDIUM").length;
+      const lowCount = activeRows.filter(r => r.severity === "LOW" || r.severity === "UNKNOWN").length;
+
+      document.getElementById("openCount").textContent = openCount;
+      document.getElementById("fixedCount").textContent = fixedCount;
+      document.getElementById("criticalCount").textContent = criticalCount;
+      document.getElementById("highCount").textContent = highCount;
+      document.getElementById("mediumCount").textContent = mediumCount;
+      document.getElementById("lowCount").textContent = lowCount;
+    }
+
+    function getSelectedSeverities() {
+      return Array.from(document.querySelectorAll(".chip input:checked"))
+        .map(input => input.value);
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("vulnerabilityTable");
+      const tableCount = document.getElementById("tableCount");
+
+      const searchValue = document.getElementById("searchInput").value.trim().toLowerCase();
+      const selectedSeverities = getSelectedSeverities();
+      const selectedStatus = document.getElementById("statusFilter").value;
+
+      const filteredRows = reportRows.filter(row => {
+        const severityMatch = selectedSeverities.includes(row.severity);
+        const statusMatch = selectedStatus === "ALL" || row.status === selectedStatus;
+
+        const searchable = [
+          row.vulnerabilityId,
+          row.packageName,
+          row.installedVersion,
+          row.fixedVersion,
+          row.severity,
+          row.status,
+          row.target,
+          row.resultType,
+          row.title,
+          row.description
+        ].join(" ").toLowerCase();
+
+        const searchMatch = !searchValue || searchable.includes(searchValue);
+
+        return severityMatch && statusMatch && searchMatch;
+      });
+
+      tableCount.textContent = `${filteredRows.length} vulnerability row(s) shown`;
+
+      if (filteredRows.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty">
+                <strong>No matching vulnerabilities</strong>
+                Adjust the search, severity filters, or status filter.
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filteredRows.map(row => {
+        const statusClass =
+          row.status === "FIXED"
+            ? "status-fixed"
+            : row.status === "NEW"
+              ? "status-new"
+              : "status-open";
+
+        const rowClass =
+          row.status === "FIXED"
+            ? "resolved-row"
+            : "";
+
+        const vulnerabilityLink = row.primaryURL
+          ? `<a href="${escapeHtml(row.primaryURL)}" target="_blank" rel="noopener noreferrer">${escapeHtml(row.vulnerabilityId)}</a>`
+          : escapeHtml(row.vulnerabilityId);
+
+        const description = row.title || row.description || "No description provided by scanner.";
+
+        const fixText =
+          row.status === "FIXED"
+            ? "Fix applied / vulnerability no longer detected"
+            : row.fixedVersion && row.fixedVersion !== "-"
+              ? escapeHtml(row.fixedVersion)
+              : "No fixed version reported";
+
+        return `
+          <tr class="${rowClass}">
+            <td>
+              <span class="badge ${statusClass}">${escapeHtml(row.status)}</span>
+            </td>
+
+            <td>
+              <span class="badge badge-${row.severity.toLowerCase()}">${escapeHtml(row.severity)}</span>
+            </td>
+
+            <td class="vuln-id">
+              ${vulnerabilityLink}
+              <div class="small">${escapeHtml(row.resultType)}</div>
+            </td>
+
+            <td>
+              <div class="pkg">${escapeHtml(row.packageName)}</div>
+            </td>
+
+            <td class="mono">
+              ${escapeHtml(row.installedVersion)}
+            </td>
+
+            <td>
+              <div class="${row.status === "FIXED" ? "fix-text" : ""}">
+                ${fixText}
+              </div>
+            </td>
+
+            <td>
+              <div class="mono">${escapeHtml(row.target)}</div>
+            </td>
+
+            <td>
+              <div class="description">${escapeHtml(description)}</div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function loadDemoData() {
+      beforeScan = {
+        SchemaVersion: 2,
+        ArtifactName: "sample-project:before-fix",
+        Results: [
+          {
+            Target: "package-lock.json",
+            Type: "npm",
+            Vulnerabilities: [
+              {
+                VulnerabilityID: "CVE-2024-12345",
+                PkgName: "express",
+                InstalledVersion: "4.17.1",
+                FixedVersion: "4.18.3",
+                Severity: "HIGH",
+                Title: "Improper input validation in express dependency",
+                Description: "A vulnerable dependency version may allow crafted input to cause unexpected behavior.",
+                PrimaryURL: "https://avd.aquasec.com/nvd/cve-2024-12345"
+              },
+              {
+                VulnerabilityID: "CVE-2023-55555",
+                PkgName: "lodash",
+                InstalledVersion: "4.17.19",
+                FixedVersion: "4.17.21",
+                Severity: "CRITICAL",
+                Title: "Prototype pollution vulnerability",
+                Description: "A prototype pollution issue can allow an attacker to modify object behavior.",
+                PrimaryURL: "https://avd.aquasec.com/nvd/cve-2023-55555"
+              },
+              {
+                VulnerabilityID: "CVE-2022-77777",
+                PkgName: "minimist",
+                InstalledVersion: "1.2.5",
+                FixedVersion: "1.2.8",
+                Severity: "MEDIUM",
+                Title: "Prototype pollution in argument parser",
+                Description: "The package may be affected by prototype pollution when parsing untrusted input.",
+                PrimaryURL: "https://avd.aquasec.com/nvd/cve-2022-77777"
+              }
+            ]
+          },
+          {
+            Target: "Dockerfile",
+            Type: "config",
+            Vulnerabilities: [
+              {
+                VulnerabilityID: "AVD-DS-0002",
+                PkgName: "dockerfile",
+                InstalledVersion: "root-user",
+                FixedVersion: "Use non-root USER",
+                Severity: "HIGH",
+                Title: "Container runs as root",
+                Description: "The container should use a non-root user to reduce privilege risk.",
+                PrimaryURL: "https://avd.aquasec.com/misconfig/ds002"
+              }
+            ]
+          }
+        ]
+      };
+
+      afterScan = {
+        SchemaVersion: 2,
+        ArtifactName: "sample-project:after-fix",
+        Results: [
+          {
+            Target: "package-lock.json",
+            Type: "npm",
+            Vulnerabilities: [
+              {
+                VulnerabilityID: "CVE-2022-77777",
+                PkgName: "minimist",
+                InstalledVersion: "1.2.5",
+                FixedVersion: "1.2.8",
+                Severity: "MEDIUM",
+                Title: "Prototype pollution in argument parser",
+                Description: "This issue is still present and requires dependency update.",
+                PrimaryURL: "https://avd.aquasec.com/nvd/cve-2022-77777"
+              }
+            ]
+          }
+        ]
+      };
+
+      buildReport();
+    }
+
+    function downloadReport() {
+      if (!beforeScan && !afterScan) {
+        alert("Please load Trivy scan data or demo data before downloading the report.");
+        return;
+      }
+
+      const html = document.documentElement.outerHTML;
+
+      const embeddedScript = `
+        <script>
+          window.__EMBEDDED_BEFORE_SCAN__ = ${JSON.stringify(beforeScan)};
+          window.__EMBEDDED_AFTER_SCAN__ = ${JSON.stringify(afterScan)};
+        <\/script>
+      `;
+
+      const autoLoadScript = `
+        <script>
+          window.addEventListener("DOMContentLoaded", function () {
+            if (window.__EMBEDDED_BEFORE_SCAN__) {
+              beforeScan = window.__EMBEDDED_BEFORE_SCAN__;
+            }
+
+            if (window.__EMBEDDED_AFTER_SCAN__) {
+              afterScan = window.__EMBEDDED_AFTER_SCAN__;
+            }
+
+            buildReport();
+
+            var fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(function(input) {
+              input.disabled = true;
+            });
+          });
+        <\/script>
+      `;
+
+      const downloadableHtml = html.replace(
+        "</body>",
+        embeddedScript + autoLoadScript + "</body>"
+      );
+
+      const blob = new Blob([downloadableHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "trivy-security-report.html";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(url);
+    }
+
+    function resetReport() {
+      beforeScan = null;
+      afterScan = null;
+      reportRows = [];
+
+      document.getElementById("beforeFile").value = "";
+      document.getElementById("afterFile").value = "";
+      document.getElementById("searchInput").value = "";
+      document.getElementById("statusFilter").value = "ALL";
+
+      document.querySelectorAll(".chip input").forEach(input => {
+        input.checked = true;
+      });
+
+      document.getElementById("projectTarget").textContent = "Not loaded";
+      document.getElementById("generatedAt").textContent = "-";
+      document.getElementById("scannerVersion").textContent = "Trivy JSON";
+      document.getElementById("remediationStatus").textContent = "Not evaluated";
+
+      document.getElementById("openCount").textContent = "0";
+      document.getElementById("fixedCount").textContent = "0";
+      document.getElementById("criticalCount").textContent = "0";
+      document.getElementById("highCount").textContent = "0";
+      document.getElementById("mediumCount").textContent = "0";
+      document.getElementById("lowCount").textContent = "0";
+
+      document.getElementById("statusText").textContent = "Awaiting scan data";
+      document.getElementById("statusDot").style.background = "var(--yellow)";
+      document.getElementById("statusDot").style.boxShadow = "0 0 20px rgba(245, 158, 11, 0.8)";
+
+      document.getElementById("tableCount").textContent = "0 vulnerabilities shown";
+
+      document.getElementById("vulnerabilityTable").innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="empty">
+              <strong>No scan data loaded</strong>
+              Upload Trivy JSON files or click “Load Demo Data”.
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    window.addEventListener("DOMContentLoaded", function () {
+      document.getElementById("generatedAt").textContent = "-";
+    });
+  </script>
+</body>
+</html>
