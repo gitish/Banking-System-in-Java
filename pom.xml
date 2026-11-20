@@ -14,6 +14,17 @@
         <junit.version>5.7.1</junit.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- CVE-2021-22569, CVE-2022-3509, CVE-2022-3510, CVE-2024-7254, CVE-2022-3171 -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>3.25.5</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
 
         <dependency>
@@ -43,10 +54,11 @@
             <artifactId>Bank</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        <!-- CVE-2021-2471, CVE-2022-21363 fixed in 8.0.28 -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.25</version>
+            <version>8.0.28</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
